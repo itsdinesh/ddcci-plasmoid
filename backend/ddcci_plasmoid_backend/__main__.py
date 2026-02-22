@@ -125,6 +125,36 @@ def main():
             except subprocess.CalledProcessError as err:
                 logger.debug(err)
                 handle_error(err)
+        elif arguments["command"] == "turn-on":
+            bus_id = arguments["bus"]
+            try:
+                ddcci.turn_on(bus_id)
+                print(
+                    json.dumps(
+                        {
+                            "command": "turn-on",
+                            "value": {"bus_id": bus_id},
+                        }
+                    )
+                )
+            except subprocess.CalledProcessError as err:
+                logger.debug(err)
+                handle_error(err)
+        elif arguments["command"] == "turn-off":
+            bus_id = arguments["bus"]
+            try:
+                ddcci.turn_off(bus_id)
+                print(
+                    json.dumps(
+                        {
+                            "command": "turn-off",
+                            "value": {"bus_id": bus_id},
+                        }
+                    )
+                )
+            except subprocess.CalledProcessError as err:
+                logger.debug(err)
+                handle_error(err)
 
     sys.exit(0)
 

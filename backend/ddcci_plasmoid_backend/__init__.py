@@ -31,4 +31,18 @@ def get_parser() -> argparse.ArgumentParser:
         help="New brightness level for the monitor. Must be between 0 and 100.",
     )
 
+    turn_on_parser = sub_parsers.add_parser("turn-on")
+    turn_on_parser.add_argument(
+        "bus",
+        type=int,
+        help="Number of the i2c bus of the monitor. E.g. 1 for bus /dev/i2c-1",
+    )
+
+    turn_off_parser = sub_parsers.add_parser("turn-off")
+    turn_off_parser.add_argument(
+        "bus",
+        type=int,
+        help="Number of the i2c bus of the monitor. E.g. 1 for bus /dev/i2c-1",
+    )
+
     return argument_parser

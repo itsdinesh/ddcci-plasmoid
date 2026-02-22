@@ -198,7 +198,7 @@ PlasmoidItem {
                 visible: monitorModel.count > 0
 
                 Layout.alignment: Qt.AlignHCenter
-                columns: 3
+                columns: 4
                 rows: monitorModel.count
                 flow: GridLayout.TopToBottom
                 columnSpacing: Kirigami.Units.gridUnit
@@ -277,6 +277,25 @@ PlasmoidItem {
                             id: percentageMetrics
                             font: percentageLabel.font
                             text: '100%'
+                        }
+                    }
+                }
+
+                Repeater {
+                    model: monitorModel
+                    delegate: RowLayout {
+                        spacing: Kirigami.Units.smallSpacing
+                        PlasmaComponents.Button {
+                            text: i18n("On")
+                            onClicked: {
+                                executable.exec(plasmoid.configuration.executable + ` turn-on ${bus_id}`)
+                            }
+                        }
+                        PlasmaComponents.Button {
+                            text: i18n("Off")
+                            onClicked: {
+                                executable.exec(plasmoid.configuration.executable + ` turn-off ${bus_id}`)
+                            }
                         }
                     }
                 }

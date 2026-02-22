@@ -104,12 +104,21 @@ or load it once:
 
 Install the backend from PyPI using the following command:
 
-`$ pip install --user ddcci-plasmoid-backend`
+```bash
+$ pip install --user ddcci-plasmoid-backend
+```
 
-You can also use [`pipx`](https://pypa.github.io/pipx/) to install the backend.
-This is the recommended option if your distribution doesn't allow `pip` for global packages, see [PEP-668](https://peps.python.org/pep-0668/).
+Or using [`pipx`](https://pypa.github.io/pipx/):
 
-`$ pipx install ddcci-plasmoid-backend`
+```bash
+$ pipx install ddcci-plasmoid-backend
+```
+
+**Alternatively, install from source (recommended for development):**
+
+```bash
+$ pip install ./backend --user --force-reinstall
+```
 
 About [pipx](https://pypa.github.io/pipx/):
 
@@ -127,15 +136,26 @@ Using the [official package for KDE Plasma 6](https://store.kde.org/p/2114471/) 
 
 Alternatively, you can install the widget directly from this repopsitory:
 
+**For KDE Plasma 6:**
 ````bash
 $ git clone https://github.com/davidhi7/ddcci-plasmoid.git
 $ cd ddcci-plasmoid
+$ kpackagetool6 --type Plasma/Applet --install plasmoid
+# or upgrade the plasmoid:
+$ kpackagetool6 --type Plasma/Applet --upgrade plasmoid
+````
+
+**For KDE Plasma 5:**
+````bash
+$ git clone https://github.com/davidhi7/ddcci-plasmoid.git
+$ cd ddcci-plasmoid
+$ git checkout kf5
 $ kpackagetool5 --install plasmoid
 # or upgrade the plasmoid:
 $ kpackagetool5 --upgrade plasmoid
 ````
 
-Note that the `main` branch is ported to KDE Plasma 6. To install the widget for Plasma 5, run `git checkout kf5` before invoking `kpackagetool5`.
+Note that the `main` branch is ported to KDE Plasma 6. 
 
 > [!IMPORTANT]  
 > If you used `pipx` to install the backend in the previous step, the widget setting `Backend executable command` must be set to `~/.local/bin/ddcci_plasmoid_backend` (without `python3` or anything else before).
@@ -162,6 +182,16 @@ Some distributions, most notably Arch Linux, disable the installation of PyPI pa
 
 This is a bug in older ddcutil versions which it is fixed in ddcutil v1.4.1. In some cases, it may cause the backend to
 fail.
+
+#### `kpackagetool6` hangs during installation or upgrade
+
+On some systems, `kpackagetool6` may hang indefinitely. If this happens, you can manually copy the plasmoid files to the installation directory:
+
+```bash
+mkdir -p ~/.local/share/plasma/plasmoids/de.davidhi.ddcci-brightness
+cp -r plasmoid/* ~/.local/share/plasma/plasmoids/de.davidhi.ddcci-brightness/
+```
+Then restart Plasma: `plasmashell --replace &`
 
 ## History
 

@@ -118,6 +118,14 @@ def set_brightness(bus_id: int, brightness: int) -> None:
     )
 
 
+def turn_on(bus_id: int) -> None:
+    subprocess_wrapper(f"ddcutil setvcp --bus {bus_id} d6 01")
+
+
+def turn_off(bus_id: int) -> None:
+    subprocess_wrapper(f"ddcutil setvcp --bus {bus_id} d6 05")
+
+
 def get_EDID_value(node: Node, value: str) -> Optional[str]:
     node = node.child_by_key["EDID synopsis"].child_by_key.get(value)
     if node:
