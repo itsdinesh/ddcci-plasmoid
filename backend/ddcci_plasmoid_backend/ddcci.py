@@ -21,6 +21,7 @@ class MonitorData(TypedDict):
     bus_id: int
     brightness: int
     power_on: bool
+    serial: str
 
 
 # Record for identifying a monitor by its `Serial number` as well as `Binary serial number` EDID value reported by
@@ -75,12 +76,15 @@ def detect():
         except Exception as e:
             logger.debug(f"Failed to detect power state for bus {bus_id}: {e}")
 
+        serial = get_EDID_value(node, "Serial number") or get_EDID_value(node, "Binary serial number") or f"bus-{bus_id}"
+
         return {
             "id": display_id,
             "name": display_name,
             "bus_id": bus_id,
             "brightness": int(display_brightness_raw),
             "power_on": power_on,
+            "serial": serial,
         }
 
     output = subprocess_wrapper("ddcutil detect")

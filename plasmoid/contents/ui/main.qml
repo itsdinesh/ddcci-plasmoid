@@ -206,9 +206,69 @@ PlasmoidItem {
 
                 Repeater {
                     model: monitorModel
-                    delegate: PlasmaExtras.Heading {
-                        level: 5
-                        text: name
+                    delegate: RowLayout {
+                        spacing: Kirigami.Units.smallSpacing
+                        property bool editing: false
+                        
+                        function getDisplayName() {
+                            try {
+                                const names = JSON.parse(plasmoid.configuration.monitorNames || "{}");
+                                return names[serial] || name;
+                            } catch (e) {
+                                return name;
+                            }
+                        }
+
+                        function setDisplayName(newName) {
+                            try {
+                                const names = JSON.parse(plasmoid.configuration.monitorNames || "{}");
+                                if (newName.trim() === "") {
+                                    delete names[serial];
+                                } else {
+                                    names[serial] = newName;
+                                }
+                                plasmoid.configuration.monitorNames = JSON.stringify(names);
+                            } catch (e) {
+                                console.error("Failed to save custom name:", e);
+                            }
+                        }
+
+                        PlasmaExtras.Heading {
+                            level: 5
+                            text: getDisplayName()
+                            visible: !editing
+                            elide: Text.ElideRight
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onDoubleClicked: {
+                                    editing = true;
+                                }
+                            }
+                        }
+
+                        PlasmaComponents.TextField {
+                            id: nameEdit
+                            visible: editing
+                            text: getDisplayName()
+                            Layout.fillWidth: true
+                            onAccepted: {
+                                setDisplayName(text);
+                                editing = false;
+                            }
+                            onActiveFocusChanged: {
+                                if (!activeFocus && editing) {
+                                    setDisplayName(text);
+                                    editing = false;
+                                }
+                            }
+                            Component.onCompleted: {
+                                if (editing) forceActiveFocus();
+                            }
+                            onVisibleChanged: {
+                                if (visible) forceActiveFocus();
+                            }
+                        }
                     }
                 }
 
