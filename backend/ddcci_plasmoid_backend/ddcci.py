@@ -20,6 +20,7 @@ class MonitorData(TypedDict):
     name: str
     bus_id: int
     brightness: int
+    power_on: bool
 
 
 # Record for identifying a monitor by its `Serial number` as well as `Binary serial number` EDID value reported by
@@ -61,11 +62,25 @@ def detect():
 
         _, _, _, display_brightness_raw, _ = result["stdout"].split(" ")
 
+        power_on = True
+        try:
+            power_result = subprocess_wrapper(f"ddcutil getvcp --bus {bus_id} --brief d6")
+            # Output format: VCP d6 CNC 0x01 0x05 or VCP d6 C 1 5
+            # The current value is the 4th element (index 3)
+            parts = power_result["stdout"].strip().split(" ")
+            if len(parts) >= 4:
+                # Parse as hex to handle 01, 0x01, etc.
+                value = int(parts[3], 16)
+                power_on = (value == 1)
+        except Exception as e:
+            logger.debug(f"Failed to detect power state for bus {bus_id}: {e}")
+
         return {
             "id": display_id,
             "name": display_name,
             "bus_id": bus_id,
             "brightness": int(display_brightness_raw),
+            "power_on": power_on,
         }
 
     output = subprocess_wrapper("ddcutil detect")

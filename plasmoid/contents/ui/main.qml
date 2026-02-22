@@ -283,18 +283,15 @@ PlasmoidItem {
 
                 Repeater {
                     model: monitorModel
-                    delegate: RowLayout {
-                        spacing: Kirigami.Units.smallSpacing
-                        PlasmaComponents.Button {
-                            text: i18n("On")
-                            onClicked: {
-                                executable.exec(plasmoid.configuration.executable + ` turn-on ${bus_id}`)
-                            }
-                        }
-                        PlasmaComponents.Button {
-                            text: i18n("Off")
-                            onClicked: {
+                    delegate: PlasmaComponents.Button {
+                        text: power_on ? i18n("Off") : i18n("On")
+                        onClicked: {
+                            if (power_on) {
                                 executable.exec(plasmoid.configuration.executable + ` turn-off ${bus_id}`)
+                                power_on = false
+                            } else {
+                                executable.exec(plasmoid.configuration.executable + ` turn-on ${bus_id}`)
+                                power_on = true
                             }
                         }
                     }
