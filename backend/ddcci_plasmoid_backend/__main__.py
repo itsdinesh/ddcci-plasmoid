@@ -156,6 +156,14 @@ def main():
                 logger.debug(err)
                 handle_error(err)
 
+    if arguments["command"] == "get-builtin-brightness":
+        try:
+            brightness = ddcci.get_builtin_brightness()
+            print(json.dumps({"command": "get-builtin-brightness", "value": brightness}))
+        except Exception as err:
+            logger.debug(err)
+            handle_error("Failed to fetch built-in brightness")
+
     sys.exit(0)
 
 

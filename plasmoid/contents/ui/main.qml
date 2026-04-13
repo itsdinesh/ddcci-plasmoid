@@ -62,14 +62,24 @@ PlasmoidItem {
 
             // if the lock is held, simply do nothing and wait for the next refresh
             if (!valuesLock) {
-                monitorModel.clear();
-			    const response = JSON.parse(stdout);
-                for (let instance of response.value) {
-                    monitorModel.append(instance);
-                }
+			    lastData = stdout;
+                updateMonitorModel();
             }
 
             commandSuccess(cmd);
+        }
+        property string lastData: ""
+        function updateMonitorModel() {
+            monitorModel.clear();
+            if (lastData) {
+                const response = JSON.parse(lastData);
+                for (let instance of response.value) {
+                    if (instance.serial === "builtin" && !plasmoid.configuration.showBuiltIn) {
+                        continue;
+                    }
+                    monitorModel.append(instance);
+                }
+            }
         }
         property string command: `${plasmoid.configuration.executable} detect`
         // add the meaningless variable `ONCE=1` in front so we can differentiate this one-off call from regular calls and disconnect it 
@@ -88,6 +98,54 @@ PlasmoidItem {
         function updateCommand() {
             command = `${plasmoid.configuration.executable} detect`;
             oneoffCommand = `ONCE=1 ${command}`;
+        }
+    }
+    Plasma5Support.DataSource {
+        id: builtinBrightnessSource
+        engine: "executable"
+        connectedSources: []
+        onNewData: function(cmd, data) {
+            disconnectSource(cmd);
+            if (data["exit code"] === 0) {
+                try {
+                    const response = JSON.parse(data.stdout);
+                    if (response.value !== null && response.value !== undefined) {
+                        updateBuiltInBrightness(response.value);
+                    }
+                } catch (e) {}
+            }
+        }
+        function refresh() {
+            if (!valuesLock) {
+                connectSource(plasmoid.configuration.executable + " get-builtin-brightness");
+            }
+        }
+    }
+
+    Timer {
+        id: builtinRefreshTimer
+        interval: 2000
+        running: plasmoid.expanded
+        repeat: true
+        onTriggered: builtinBrightnessSource.refresh()
+    }
+
+    onExpandedChanged: {
+        if (expanded) {
+            builtinBrightnessSource.refresh();
+        }
+    }
+
+    function updateBuiltInBrightness(newBrightness) {
+        if (valuesLock || newBrightness === undefined || newBrightness === null) return;
+        for (let i = 0; i < monitorModel.count; i++) {
+            const item = monitorModel.get(i);
+            if (item && item.serial === "builtin") {
+                if (parseInt(item.brightness) !== parseInt(newBrightness)) {
+                    monitorModel.setProperty(i, "brightness", parseInt(newBrightness));
+                }
+                break;
+            }
         }
     }
 
@@ -128,6 +186,15 @@ PlasmoidItem {
                 PlasmaExtras.Heading {
                     level: 1
                     text: i18n("Display Brightness")
+                }
+
+                PlasmaComponents.ToolButton {
+                    Layout.alignment: Qt.AlignRight
+                    icon.name: plasmoid.configuration.showBuiltIn ? "display" : "display-off"
+                    PlasmaComponents.ToolTip {
+                        text: plasmoid.configuration.showBuiltIn ? i18n("Hide built-in monitor") : i18n("Show built-in monitor")
+                    }
+                    onClicked: plasmoid.configuration.showBuiltIn = !plasmoid.configuration.showBuiltIn
                 }
 
                 PlasmaComponents.ToolButton {
@@ -344,6 +411,7 @@ PlasmoidItem {
                 Repeater {
                     model: monitorModel
                     delegate: PlasmaComponents.Button {
+                        visible: serial !== "builtin"
                         text: power_on ? i18n("Off") : i18n("On")
                         onClicked: {
                             if (power_on) {
@@ -383,6 +451,8 @@ PlasmoidItem {
                 monitorDataSource.stopAllCommands();
                 monitorDataSource.updateCommand();
                 monitorDataSource.start();
+            } else if (key === 'showBuiltIn') {
+                monitorDataSource.updateMonitorModel();
             }
         }
     }

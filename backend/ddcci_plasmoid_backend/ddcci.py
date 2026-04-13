@@ -22,6 +22,7 @@ class MonitorData(TypedDict):
     brightness: int
     power_on: bool
     serial: str
+    is_builtin: bool
 
 
 # Record for identifying a monitor by its `Serial number` as well as `Binary serial number` EDID value reported by
@@ -46,6 +47,20 @@ class MonitorID:
 
 
 def detect():
+    def get_builtin_monitor() -> Optional[MonitorData]:
+        brightness = get_builtin_brightness()
+        if brightness is not None:
+            return {
+                "id": 0,
+                "name": "Built-in Screen",
+                "bus_id": -1,
+                "brightness": brightness,
+                "power_on": True,
+                "serial": "builtin",
+                "is_builtin": True
+            }
+        return None
+
     def fetch_monitor_data(node: Node) -> MonitorData:
         display_id = get_monitor_id(node)
         display_name = ""
@@ -85,6 +100,7 @@ def detect():
             "brightness": int(display_brightness_raw),
             "power_on": power_on,
             "serial": serial,
+            "is_builtin": False,
         }
 
     output = subprocess_wrapper("ddcutil detect")
@@ -99,6 +115,15 @@ def detect():
                 f"Key {child.key.strip()} does not match pattern for valid display, so skip it"
             )
             continue
+
+        # Skip internal displays detected by ddcutil. They often don't support DDC/CI correctly
+        # and should be handled by the system's native brightness control instead.
+        if "DRM connector" in child.child_by_key:
+            connector = child.child_by_key["DRM connector"].value
+            if "eDP" in connector or "LVDS" in connector:
+                logger.debug(f"Skipping internal display detected by ddcutil: {connector}")
+                continue
+
         monitor_id = get_monitor_id(child)
         if child.child_by_key["VCP version"].value == "Detection failed":
             logger.debug(
@@ -128,13 +153,62 @@ def detect():
         except subprocess.CalledProcessError as err:
             monitor_data.append(err)
 
+    builtin_monitor = get_builtin_monitor()
+    if builtin_monitor:
+        monitor_data.append(builtin_monitor)
+
     return monitor_data
 
 
 def set_brightness(bus_id: int, brightness: int) -> None:
-    subprocess_wrapper(
-        f"ddcutil setvcp --bus {bus_id} {brightness_feature_code:x} {brightness}"
-    )
+    if bus_id == -1:
+        # Get max brightness to scale the 0-100 value from the UI
+        try:
+            res_max = subprocess.run(
+                ["qdbus", "org.kde.Solid.PowerManagement", "/org/kde/Solid/PowerManagement/Actions/BrightnessControl",
+                 "org.kde.Solid.PowerManagement.Actions.BrightnessControl.brightnessMax"],
+                capture_output=True, text=True
+            )
+            max_val = 100
+            if res_max.returncode == 0 and res_max.stdout.strip():
+                max_val = int(res_max.stdout.strip())
+
+            actual_val = int(brightness * max_val / 100)
+            subprocess_wrapper(
+                f"qdbus org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement/Actions/BrightnessControl "
+                f"org.kde.Solid.PowerManagement.Actions.BrightnessControl.setBrightness {actual_val}"
+            )
+        except Exception as e:
+            logger.debug(f"Failed to set built-in brightness: {e}")
+    else:
+        subprocess_wrapper(
+            f"ddcutil setvcp --bus {bus_id} {brightness_feature_code:x} {brightness}"
+        )
+
+
+def get_builtin_brightness() -> Optional[int]:
+    try:
+        # Get max brightness to normalize the value to 0-100
+        result = subprocess.run(
+            ["qdbus", "org.kde.Solid.PowerManagement", "/org/kde/Solid/PowerManagement/Actions/BrightnessControl",
+             "org.kde.Solid.PowerManagement.Actions.BrightnessControl.brightnessMax"],
+            capture_output=True, text=True
+        )
+        max_val = 100
+        if result.returncode == 0 and result.stdout.strip():
+            max_val = int(result.stdout.strip())
+
+        result = subprocess.run(
+            ["qdbus", "org.kde.Solid.PowerManagement", "/org/kde/Solid/PowerManagement/Actions/BrightnessControl",
+             "org.kde.Solid.PowerManagement.Actions.BrightnessControl.brightness"],
+            capture_output=True, text=True
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            val = int(result.stdout.strip())
+            return int(val * 100 / max_val) if max_val > 0 else 0
+    except Exception as e:
+        logger.debug(f"Failed to fetch built-in brightness: {e}")
+    return None
 
 
 def turn_on(bus_id: int) -> None:
