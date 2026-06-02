@@ -125,13 +125,13 @@ PlasmoidItem {
     Timer {
         id: builtinRefreshTimer
         interval: 2000
-        running: plasmoid.expanded
+        running: root.expanded
         repeat: true
         onTriggered: builtinBrightnessSource.refresh()
     }
 
     onExpandedChanged: {
-        if (expanded) {
+        if (root.expanded) {
             builtinBrightnessSource.refresh();
         }
     }
@@ -190,7 +190,7 @@ PlasmoidItem {
 
                 PlasmaComponents.ToolButton {
                     Layout.alignment: Qt.AlignRight
-                    icon.name: plasmoid.configuration.showBuiltIn ? "display" : "display-off"
+                    icon.name: plasmoid.configuration.showBuiltIn ? "computer-laptop" : "video-display"
                     PlasmaComponents.ToolTip {
                         text: plasmoid.configuration.showBuiltIn ? i18n("Hide built-in monitor") : i18n("Show built-in monitor")
                     }
@@ -280,9 +280,9 @@ PlasmoidItem {
                         function getDisplayName() {
                             try {
                                 const names = JSON.parse(plasmoid.configuration.monitorNames || "{}");
-                                return names[serial] || name;
+                                return names[model.serial] || model.name;
                             } catch (e) {
-                                return name;
+                                return model.name;
                             }
                         }
 
@@ -290,9 +290,9 @@ PlasmoidItem {
                             try {
                                 const names = JSON.parse(plasmoid.configuration.monitorNames || "{}");
                                 if (newName.trim() === "") {
-                                    delete names[serial];
+                                    delete names[model.serial];
                                 } else {
-                                    names[serial] = newName;
+                                    names[model.serial] = newName;
                                 }
                                 plasmoid.configuration.monitorNames = JSON.stringify(names);
                             } catch (e) {
@@ -348,7 +348,7 @@ PlasmoidItem {
                         Layout.fillWidth: !root.outsideSysTray
                         from: 0
                         to: 100
-                        value: brightness
+                        value: model.brightness
                         stepSize: plasmoid.configuration.stepSize || 1
 
                         Timer {
@@ -364,14 +364,14 @@ PlasmoidItem {
 
                             onTriggered: {
                                 valuesLock = false
-                                executable.exec(plasmoid.configuration.executable + ` set-brightness ${bus_id} ${brightness}`)
+                                executable.exec(plasmoid.configuration.executable + ` set-brightness ${model.bus_id} ${model.brightness}`)
                             }
                         }
 
                         onMoved: () => {
                             // Should also be locked during mouse wheel scrolling.
                             valuesLock = true
-                            brightness = value
+                            model.brightness = value
 
                             // Handle mouse wheel debounce only when the slider is not pressed.
                             if (!pressed) {
@@ -385,7 +385,7 @@ PlasmoidItem {
                             } else {
                                 // Slider is released
                                 valuesLock = false
-                                executable.exec(plasmoid.configuration.executable + ` set-brightness ${bus_id} ${brightness}`)
+                                executable.exec(plasmoid.configuration.executable + ` set-brightness ${model.bus_id} ${model.brightness}`)
                             }
                         }
                     }
@@ -397,7 +397,7 @@ PlasmoidItem {
                         id: percentageLabel
                         horizontalAlignment: Qt.AlignRight
 
-                        text: brightness + '%'
+                        text: model.brightness + '%'
 
                         Layout.minimumWidth: percentageMetrics.advanceWidth
                         TextMetrics {
@@ -411,15 +411,15 @@ PlasmoidItem {
                 Repeater {
                     model: monitorModel
                     delegate: PlasmaComponents.Button {
-                        visible: serial !== "builtin"
-                        text: power_on ? i18n("Off") : i18n("On")
+                        visible: model.serial !== "builtin"
+                        text: model.power_on ? i18n("Off") : i18n("On")
                         onClicked: {
-                            if (power_on) {
-                                executable.exec(plasmoid.configuration.executable + ` turn-off ${bus_id}`)
-                                power_on = false
+                            if (model.power_on) {
+                                executable.exec(plasmoid.configuration.executable + ` turn-off ${model.bus_id}`)
+                                monitorModel.setProperty(index, "power_on", false)
                             } else {
-                                executable.exec(plasmoid.configuration.executable + ` turn-on ${bus_id}`)
-                                power_on = true
+                                executable.exec(plasmoid.configuration.executable + ` turn-on ${model.bus_id}`)
+                                monitorModel.setProperty(index, "power_on", true)
                             }
                         }
                     }

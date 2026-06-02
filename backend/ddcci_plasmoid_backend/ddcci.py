@@ -1,5 +1,6 @@
 import logging
 import re
+import shutil
 import subprocess
 from typing import Optional, TypedDict
 
@@ -7,6 +8,15 @@ from ddcci_plasmoid_backend.Node import Node
 
 logger = logging.getLogger(__name__)
 brightness_feature_code = 0x10
+
+# Check if qdbus, qdbus6, or qdbus-qt6 exists.
+def detect_qdbus_command() -> str:
+    for cmd in ["qdbus", "qdbus6", "qdbus-qt6"]:
+        if shutil.which(cmd):
+            return cmd
+    return "qdbus"
+
+qdbus_cmd = detect_qdbus_command()
 
 
 class CommandOutput(TypedDict):
@@ -165,7 +175,7 @@ def set_brightness(bus_id: int, brightness: int) -> None:
         # Get max brightness to scale the 0-100 value from the UI
         try:
             res_max = subprocess.run(
-                ["qdbus", "org.kde.Solid.PowerManagement", "/org/kde/Solid/PowerManagement/Actions/BrightnessControl",
+                [qdbus_cmd, "org.kde.Solid.PowerManagement", "/org/kde/Solid/PowerManagement/Actions/BrightnessControl",
                  "org.kde.Solid.PowerManagement.Actions.BrightnessControl.brightnessMax"],
                 capture_output=True, text=True
             )
@@ -175,7 +185,7 @@ def set_brightness(bus_id: int, brightness: int) -> None:
 
             actual_val = int(brightness * max_val / 100)
             subprocess_wrapper(
-                f"qdbus org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement/Actions/BrightnessControl "
+                f"{qdbus_cmd} org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement/Actions/BrightnessControl "
                 f"org.kde.Solid.PowerManagement.Actions.BrightnessControl.setBrightness {actual_val}"
             )
         except Exception as e:
@@ -190,7 +200,7 @@ def get_builtin_brightness() -> Optional[int]:
     try:
         # Get max brightness to normalize the value to 0-100
         result = subprocess.run(
-            ["qdbus", "org.kde.Solid.PowerManagement", "/org/kde/Solid/PowerManagement/Actions/BrightnessControl",
+            [qdbus_cmd, "org.kde.Solid.PowerManagement", "/org/kde/Solid/PowerManagement/Actions/BrightnessControl",
              "org.kde.Solid.PowerManagement.Actions.BrightnessControl.brightnessMax"],
             capture_output=True, text=True
         )
@@ -199,7 +209,7 @@ def get_builtin_brightness() -> Optional[int]:
             max_val = int(result.stdout.strip())
 
         result = subprocess.run(
-            ["qdbus", "org.kde.Solid.PowerManagement", "/org/kde/Solid/PowerManagement/Actions/BrightnessControl",
+            [qdbus_cmd, "org.kde.Solid.PowerManagement", "/org/kde/Solid/PowerManagement/Actions/BrightnessControl",
              "org.kde.Solid.PowerManagement.Actions.BrightnessControl.brightness"],
             capture_output=True, text=True
         )
